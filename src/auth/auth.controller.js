@@ -1,5 +1,5 @@
 const RESPONSES = require("../../messages/responses")
-const { signUpService, signInService } = require("./auth.service")
+const { signUpService, signInService, validateService } = require("./auth.service")
 
 async function signUpController(req, res) {
 
@@ -33,4 +33,20 @@ async function signInController(req, res) {
     
 }
 
-module.exports = { signUpController, signInController }
+async function validateController(req, res) {
+
+    try {
+
+        await validateService(req, res)
+        
+    } catch (error) {
+        console.log("Erreur", error)
+        return res.status(RESPONSES.INTERNAL_SERVER_ERROR.status).json({
+            success: RESPONSES.INTERNAL_SERVER_ERROR.success,
+            message: RESPONSES.INTERNAL_SERVER_ERROR.message
+        })
+    }
+    
+}
+
+module.exports = { signUpController, signInController, validateController }

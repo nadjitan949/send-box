@@ -40,9 +40,9 @@ async function signInService(req, res) {
     try {
 
         const { username, password } = req.body
-        const user = await User.findOne({where: {username}})
+        const user = await User.findOne({ where: { username } })
 
-        if(!user){
+        if (!user) {
             return res.status(RESPONSES.UNAUTHORIZED.status).json({
                 success: RESPONSES.UNAUTHORIZED.success,
                 message: "Nom d'utilisateur ou email incorect !"
@@ -51,7 +51,7 @@ async function signInService(req, res) {
 
         const isMatch = await bcrypt.compare(password, user.password)
 
-        if(!isMatch){
+        if (!isMatch) {
             return res.status(RESPONSES.UNAUTHORIZED.status).json({
                 success: RESPONSES.UNAUTHORIZED.success,
                 message: "Nom d'utilisateur ou email incorect !"
@@ -76,4 +76,34 @@ async function signInService(req, res) {
 
 }
 
-module.exports = { signUpService, signInService }
+async function validateService(req, res) {
+
+    try {
+
+        const id = req.user.id
+        const user = await User.findByPk(id)
+
+        if(!user){
+            return res.status(RESPONSES.NOT_FOUND.status).json({
+                success: RESPONSES.NOT_FOUND.success,
+                message: "Compte invalide"
+            })
+        }
+
+        return res.status(RESPONSES.OK.status).json({
+            success: RESPONSES.OK.success,
+            message: "Bieenvenue sur votre compte",
+            user
+        })
+
+    } catch (error) {
+        console.log("Erreur", error)
+        return res.status(RESPONSES.INTERNAL_SERVER_ERROR.status).json({
+            success: RESPONSES.INTERNAL_SERVER_ERROR.success,
+            message: RESPONSES.INTERNAL_SERVER_ERROR.message
+        })
+    }
+
+}
+
+module.exports = { signUpService, signInService, validateService }

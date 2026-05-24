@@ -18,7 +18,7 @@ async function authMiddleware(req, res, next) {
 
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-        const currentUser = await User.findByPk(decoded.userId);
+        const currentUser = await User.findByPk(decoded.id);
         
         if (!currentUser) {
             return res.status(RESPONSES.UNAUTHORIZED.status).json({
