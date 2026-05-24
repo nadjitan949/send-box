@@ -1,4 +1,6 @@
 const generateToken = require("../../configs/generate.token")
+const Conversation = require("../../database/models/conversations.model")
+const Message = require("../../database/models/messages.model")
 const User = require("../../database/models/users.model")
 const RESPONSES = require("../../messages/responses")
 const bcrypt = require("bcrypt")
@@ -81,7 +83,19 @@ async function validateService(req, res) {
     try {
 
         const id = req.user.id
-        const user = await User.findByPk(id)
+        const user = await User.findByPk(id, 
+            {
+                include: {
+                    model: Conversation,
+                    as: "conversations",
+                    include: {
+                        model: User,
+                        as: "participants"
+                    }
+                    
+                }
+            }
+        )
 
         if(!user){
             return res.status(RESPONSES.NOT_FOUND.status).json({
