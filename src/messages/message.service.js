@@ -141,4 +141,62 @@ async function markAsReadService(req, res) {
     }
 }
 
-module.exports = { sendMessageService, markAsReadService };
+async function updateMessageService(req, res) {
+
+    try {
+
+        const id = req.params.id
+        const userId = req.user.id
+        const { content } = req.body
+
+        const message = await Message.findByPk(id,
+            {
+                include: {
+                    model: User,
+                    as: "sender",
+                    attributes: ['id']
+                }
+            }
+        )
+        const currentUser = await User.findByPk(userId)
+
+        if(message.sender.id !== currentUser.id) {
+            return res.status(RESPONSES.FORBIDDEN.status).json({
+                success: RESPONSES.FORBIDDEN.success,
+                message: "Accès refusé. Vous n'êtes pas l'auteur de ce message."
+            })
+        }
+
+        if(!currentUser) {
+            return res.status(RESPONSES.NOT_FOUND.status).json({
+                success: RESPONSES.NOT_FOUND.success,
+                message: "Utilisateur introuvable"
+            })
+        }
+
+        if(!message){
+            return res.status(RESPONSES.NOT_FOUND.status).json({
+                success: RESPONSES.NOT_FOUND.success,
+                message: "Message introuvable"
+            })
+        }
+
+        await message.update({content})
+
+        return res.status(RESPONSES.OK.status).json({
+            success: RESPONSES.OK.success,
+            message: "Message mis à jour",
+            message
+        })
+        
+    } catch (error) {
+        console.error("Erreur statut vu:", error);
+        return res.status(RESPONSES.INTERNAL_SERVER_ERROR.status).json({
+            success: RESPONSES.INTERNAL_SERVER_ERROR.success,
+            message: RESPONSES.INTERNAL_SERVER_ERROR.message
+        });
+    }
+    
+}
+
+module.exports = { sendMessageService, markAsReadService, updateMessageService };

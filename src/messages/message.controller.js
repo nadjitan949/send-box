@@ -1,5 +1,5 @@
 const RESPONSES = require("../../messages/responses");
-const { sendMessageService, markAsReadService } = require("./message.service");
+const { sendMessageService, markAsReadService, updateMessageService } = require("./message.service");
 
 async function sendMessageController(req, res) {
 
@@ -33,4 +33,20 @@ async function markAsReadController(req, res) {
     
 }
 
-module.exports = { sendMessageController, markAsReadController }
+async function updateMessageController(req, res) {
+
+    try {
+
+        await updateMessageService(req, res)
+        
+    } catch (error) {
+        console.error("Erreur envoi message:", error);
+        return res.status(RESPONSES.INTERNAL_SERVER_ERROR.status).json({
+            success: RESPONSES.INTERNAL_SERVER_ERROR.success,
+            message: RESPONSES.INTERNAL_SERVER_ERROR.message
+        });
+    }
+    
+}
+
+module.exports = { sendMessageController, markAsReadController, updateMessageController }
