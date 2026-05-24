@@ -12,7 +12,7 @@ async function sendMessageService(req, res) {
         const sender = await User.findByPk(senderId)
         const receiver = await User.findByPk(receiverId)
 
-        if(!sender || !receiver){
+        if (!sender || !receiver) {
             return res.status(RESPONSES.NOT_FOUND.status).json({
                 success: RESPONSES.NOT_FOUND.success,
                 message: "Expéditeur ou destinataire non trouvé"
@@ -26,22 +26,36 @@ async function sendMessageService(req, res) {
             })
         }
 
-        let conversation = await Conversation.findOne({
+        const senderConversations = await Conversation.findAll({
             include: [{
                 model: User,
                 as: "participants",
-                where: {
-                    id: { [Op.in]: [senderId, receiverId] }
-                }
-            }]
+                where: { id: senderId },
+                attributes: []
+            }],
+            attributes: ['id']
         });
 
-        if (conversation && conversation.participants.length !== 2) {
-            conversation = null;
+        const senderConvIds = senderConversations.map(c => c.id);
+
+        // ✅ let au lieu de const
+        let conversation = null;
+
+        if (senderConvIds.length > 0) {
+            conversation = await Conversation.findOne({
+                where: { id: { [Op.in]: senderConvIds } },
+                include: [{
+                    model: User,
+                    as: "participants",
+                    where: { id: receiverId },
+                    attributes: []
+                }]
+            });
         }
+
+        // ✅ Plus de vérification .length, on n'en a plus besoin
         if (!conversation) {
             conversation = await Conversation.create({}, { transaction });
-
             await conversation.addParticipants([senderId, receiverId], { transaction });
         }
 
@@ -77,4 +91,54 @@ async function sendMessageService(req, res) {
     }
 }
 
-module.exports = { sendMessageService };
+async function markAsReadService(req, res) {
+    try {
+        const currentUserId = req.user.id;
+        const { conversationId } = req.params;
+
+        // 1. Vérifier si la conversation existe
+        const conversation = await Conversation.findByPk(conversationId);
+        if (!conversation) {
+            return res.status(RESPONSES.NOT_FOUND.status).json({
+                success: RESPONSES.NOT_FOUND.success,
+                message: "Conversation non trouvée"
+            });
+        }
+
+        const isMember = await conversation.hasParticipant(currentUserId);
+
+        if (!isMember) {
+            return res.status(RESPONSES.FORBIDDEN.status).json({
+                success: RESPONSES.FORBIDDEN.success,
+                message: "Accès refusé. Vous ne faites pas partie de cette conversation."
+            });
+        }
+
+        // 3. Si c'est bon, on met à jour les messages
+        const [updatedCount] = await Message.update(
+            { isRead: true },
+            {
+                where: {
+                    conversationId: conversation.id,
+                    senderId: { [Op.ne]: currentUserId }, // Pas besoin de refaire un findByPk pour l'User, prends directement currentUserId
+                    isRead: false
+                },
+            }
+        );
+
+        return res.status(RESPONSES.OK.status).json({
+            success: RESPONSES.OK.success,
+            message: `${updatedCount} message(s) marqué(s) comme lu(s).`,
+            data: { conversationId, updatedCount }
+        });
+
+    } catch (error) {
+        console.error("Erreur statut vu:", error);
+        return res.status(RESPONSES.INTERNAL_SERVER_ERROR.status).json({
+            success: RESPONSES.INTERNAL_SERVER_ERROR.success,
+            message: RESPONSES.INTERNAL_SERVER_ERROR.message
+        });
+    }
+}
+
+module.exports = { sendMessageService, markAsReadService };
